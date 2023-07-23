@@ -28,15 +28,45 @@ describe('effect',()=>{
         });
 
         expect(foo).toBe(11);
-        expect(foo).toBe(12);
         expect(runner()).toBe("foo");
+        expect(foo).toBe(12);
      })
 
 
+     // 调度程序 
      it('scheduler',()=>{
         // 1. 通过 effect 的第二个参数给定的 一个  scheduler 的 fn
         // 2. effect 第一次执行的时候 还会执行 fn
         // 3. 当 响应式对象 set update  不会执行  fn 而是执行 scheduler
+        // 4. 如果当执行 runner 的时候， 会再次执行 fn
+        let dummy;
+        let run:any;
+        // 用于创建一个模拟函数（mock function）   const mockFn = jest.fn();
+        const scheduler  = jest.fn(()=>{
+            run = runner;
+        })
+        const obj = reactive({foo:1});
+        const runner = effect(
+            ()=>{
+                dummy = obj.foo;
+            },
+            {scheduler}
+        );
+        // toHaveBeenCalled 用于验证一个模拟函数（mock function）是否被调用过
+        expect(scheduler).not.toHaveBeenCalled();
+        expect(dummy).toBe(1);
+        // should be called on first trigger
+        obj.foo++ ;
+        expect(scheduler).toHaveBeenCalledTimes(1);
+        // should not run yet
+        expect(dummy).toBe(1);
+        run();
+        // should have run 
+        expect(dummy).toBe(2);
+     })
+
+     // 当调用 effect stop 的时候， 该依赖fn , 会停止触发,  更新
+     it('effect stop',()=>{
         
      })
 })

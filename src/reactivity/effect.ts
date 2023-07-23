@@ -20,7 +20,7 @@
 
 class ReactiveEffect {
     _fn: any;
-    constructor(fn){
+    constructor(fn, public scheduler?){
         this._fn = fn;
     }
     run(){
@@ -42,13 +42,13 @@ export function track(target,key){
 
     //  如果这个 depsMap 也没有对应属性，则创建出一个不重复的key
     //  * 每个响应式对象的每个key , 都需要有一个依赖收集的容器
-    let dep = depsMap.get(key); 
-    if(!dep){
-        dep = new Set();
-        depsMap.set(key,dep)
+    let deps = depsMap.get(key); 
+    if(!deps){
+        deps = new Set();
+        depsMap.set(key,deps)
     }
 
-    dep.add(activeEffect)
+    deps.add(activeEffect)
 }
 
 // 依赖触发
@@ -57,7 +57,12 @@ export function trigger(target,key){
     let deps  = depsMap.get(key)
     
     for(const effect of deps){
-        effect.run()
+        if(effect.scheduler){
+            effect.scheduler()
+        }else{
+            effect.run()
+        }
+        
     }
 }
 
@@ -67,10 +72,12 @@ export function trigger(target,key){
  * effect的作用就是让我们传入的函数发生作用
  * */ 
 let activeEffect; 
-export function effect(fn){
-    const _effect = new ReactiveEffect(fn);
+export function effect(fn, options:any = {}){
+
+    const _effect = new ReactiveEffect(fn,options.scheduler);
+
     _effect.run();
 
-    // 以当前的实例，作为他的this 指向
+    // 以当前的实例，作为他的 this 指向
     return _effect.run.bind(_effect)
 }
