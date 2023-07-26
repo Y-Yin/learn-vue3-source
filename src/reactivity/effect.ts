@@ -20,6 +20,9 @@
 
 class ReactiveEffect {
     _fn: any;
+    deps = [];
+    active = true;
+    onStop?:()=>void;
     constructor(fn, public scheduler?){
         this._fn = fn;
     }
@@ -27,9 +30,25 @@ class ReactiveEffect {
         activeEffect = this;
         return this._fn();
     }
-
+    stop(){
+        // 避免每次都清空， 影响性能，我们设置一个变量记录是否清空过
+        if(this.active){
+            cleanupEffect(this)
+            if(this.onStop){
+                this.onStop()
+            }
+            this.active = false;
+        }
+        
+    }
 }
 
+
+function cleanupEffect(effect){
+    effect.deps.forEach((dep:any)=>{
+        dep.delete(effect)
+    })
+}
 
 const targetMap = new Map();
 //  依赖收集
@@ -47,8 +66,15 @@ export function track(target,key){
         deps = new Set();
         depsMap.set(key,deps)
     }
+    // track 是依赖收集， 但是只是单纯的获取的话， 并没有effect, 此时activeEffect.deps会报错
+    // deps.add(activeEffect);
+    // activeEffect.deps.push(deps);
+    if(activeEffect){
+        deps.add(activeEffect);
+        activeEffect.deps.push(deps);
+    }
 
-    deps.add(activeEffect)
+
 }
 
 // 依赖触发
@@ -73,11 +99,23 @@ export function trigger(target,key){
  * */ 
 let activeEffect; 
 export function effect(fn, options:any = {}){
-
+    // fn
     const _effect = new ReactiveEffect(fn,options.scheduler);
+    // options  将options的参数赋值给effect
+    Object.assign(_effect,options)
 
     _effect.run();
 
     // 以当前的实例，作为他的 this 指向
-    return _effect.run.bind(_effect)
+    const runner:any =  _effect.run.bind(_effect)
+
+    runner.effect = _effect;
+
+    return runner
+}
+
+
+
+export function stop(runner){
+    runner.effect.stop();
 }

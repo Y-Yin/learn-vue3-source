@@ -1,4 +1,4 @@
-import {effect} from '../effect';
+import {effect , stop} from '../effect';
 import {reactive} from '../reactive';
 describe('effect',()=>{
     //  测试核心逻辑， 依赖收集 ， 以及依赖触发
@@ -67,6 +67,34 @@ describe('effect',()=>{
 
      // 当调用 effect stop 的时候， 该依赖fn , 会停止触发,  更新
      it('effect stop',()=>{
-        
+        let dummy;
+        const obj = reactive({prop:1});
+        const runner = effect(()=>{
+            dummy = obj.prop
+        })
+        obj.prop = 2;
+        expect(dummy).toBe(2);
+        stop(runner);
+        obj.prop = 3;
+        expect(dummy).toBe(2);
+     })
+
+     //  effect的时候，可以传入一个onStop函数，当stop函数被执行的时候， onStop会被回调执行 
+     it('onStop',()=>{
+        const obj  = reactive({
+            foo:1
+        })
+        const onStop = jest.fn();
+        let dummy;
+        const runner = effect(
+            ()=>{
+                dummy = obj.foo
+            },
+            {
+                onStop
+            }
+        );
+        stop(runner)
+        expect(onStop).toBeCalledTimes(1)
      })
 })
