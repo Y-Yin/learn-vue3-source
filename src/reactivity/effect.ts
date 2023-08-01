@@ -18,6 +18,9 @@
    ]
  * */ 
 
+let activeEffect; 
+let shouldTrack; 
+
 class ReactiveEffect {
     _fn: any;
     deps = [];
@@ -27,8 +30,19 @@ class ReactiveEffect {
         this._fn = fn;
     }
     run(){
+        // 1.会收集依赖
+        // shouldTrack 来做区分
+        if(!this.active){
+            return this._fn();
+        }
+        shouldTrack = true;
         activeEffect = this;
-        return this._fn();
+
+        const result = this._fn();
+
+        // reset
+        shouldTrack = false;
+        return result
     }
     stop(){
         // 避免每次都清空， 影响性能，我们设置一个变量记录是否清空过
@@ -53,6 +67,12 @@ function cleanupEffect(effect){
 const targetMap = new Map();
 //  依赖收集
 export function track(target,key){
+
+    // activeEffect=false &&  shouldTrack=false 正在收集中的状态
+    if(!activeEffect)return;
+    if(!shouldTrack)return;
+
+
     let depsMap = targetMap.get(target); // 获取target 当前对象有无对应的value
     if( !depsMap ){  
         depsMap = new Map();
@@ -69,11 +89,9 @@ export function track(target,key){
     // track 是依赖收集， 但是只是单纯的获取的话， 并没有effect, 此时activeEffect.deps会报错
     // deps.add(activeEffect);
     // activeEffect.deps.push(deps);
-    if(activeEffect){
-        deps.add(activeEffect);
-        activeEffect.deps.push(deps);
-    }
 
+    deps.add(activeEffect);
+    activeEffect.deps.push(deps);
 
 }
 
@@ -97,7 +115,6 @@ export function trigger(target,key){
 /**
  * effect的作用就是让我们传入的函数发生作用
  * */ 
-let activeEffect; 
 export function effect(fn, options:any = {}){
     // fn
     const _effect = new ReactiveEffect(fn,options.scheduler);

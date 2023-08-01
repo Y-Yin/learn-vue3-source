@@ -72,9 +72,15 @@ describe('effect',()=>{
         const runner = effect(()=>{
             dummy = obj.prop
         })
+
         obj.prop = 2;
         expect(dummy).toBe(2);
         stop(runner);
+
+        // 这里还需要考虑一个问题就是， obj.prop++
+        // 当我们stop清空掉收集的依赖以后， obj.prop++ 会先触发一次get，此时依赖又被收集了
+        // 
+
         obj.prop = 3;
         expect(dummy).toBe(2);
      })
